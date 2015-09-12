@@ -139,6 +139,16 @@ public class EUExesurfingRtc extends EUExBase {
         @Override
         public void onQueryStatus(int status, String paramers) {
         }
+
+        @Override
+        public void onReceiveIm(String arg0, String arg1, String arg2) {
+            
+        }
+
+        @Override
+        public void onSendIm(int arg0) {
+            
+        }
     };
     
     /** The m c listener. */
