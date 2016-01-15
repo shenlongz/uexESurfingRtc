@@ -2,8 +2,9 @@
 <uexplugins>
    <!-- plugin uexESurfingRtc -->
     <plugin
-        uexName="uexESurfingRtc" version="3.1.4" build="4">
-        <info>4:升级RTC sdk_2.5。</info>
+        uexName="uexESurfingRtc" version="3.1.5" build="5">
+        <info>5:升级RTC sdk_2.6。</info>
+        <build>4:升级RTC sdk_2.5。</build>
         <build>3:添加设置appKey和appId的回调。</build>
         <build>2:升级RTC sdk。</build>
         <build>0:初始化插件。</build>
