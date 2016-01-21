@@ -223,8 +223,7 @@ public class RtcLogin{
             jargs.put(RtcConst.kAccType,RtcConst.UEType_Current);//终端类型
             
             mAcc = mClt.createDevice(jargs.toString(), mAListener); //注册
-            mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_LOG_STATUS, 
-                    ConstantUtils.LOG_STATUS_LOGIN);
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -236,6 +235,9 @@ public class RtcLogin{
         int callType = typeId;
         switch (typeId) 
         {
+        case ConstantUtils.CALL_TYPE_AUDIO_AND_VIDED:
+            callType = RtcConst.CallType_A_V;
+            break;
         case ConstantUtils.CALL_TYPE_RECV_ONLY:
             callType = RtcConst.CallType_A_V_M;
             break;

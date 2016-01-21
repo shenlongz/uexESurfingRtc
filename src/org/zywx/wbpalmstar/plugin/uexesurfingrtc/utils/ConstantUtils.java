@@ -6,13 +6,15 @@ public class ConstantUtils
     public static final int SET_APP_KEY_ID_ID_OFFSET = 1;
     
     public static final int CALL_TYPE_ID_OFFSET = 0;
-    public static final int CALL_USEER_NAME_OFFSET = 1;
+    public static final int CALL_USER_NAME_OFFSET = 1;
 
+    public static final int MSG_USER_NAME_OFFSET  = 0;
+    public static final int MSG_TYPE_MSG_OFFSET = 1;
+    
     public static final int CALL_TYPE_AUDIO = 1;
-    public static final int CALL_TYPE_VIDEO = 2;
-    public static final int CALL_TYPE_AUDIO_AND_VIDED = 3;
-    public static final int CALL_TYPE_RECV_ONLY = 4;
-    public static final int CALL_TYPE_SEND_ONLY = 5;
+    public static final int CALL_TYPE_AUDIO_AND_VIDED = 2;
+    public static final int CALL_TYPE_RECV_ONLY = 3;
+    public static final int CALL_TYPE_SEND_ONLY = 4;
     
     public static final String ERROR_MSG_OK = "OK";
     public static final String ERROR_MSG_ERROR = "ERROR:";
@@ -24,6 +26,8 @@ public class ConstantUtils
     public static final String CALL_STATUS_NORMAL = ERROR_MSG_OK + ":NORMAL";
     public static final String CALL_STATUS_INCOMING = ERROR_MSG_OK + ":INCOMING";
     public static final String CALL_STATUS_CALLING = ERROR_MSG_OK + ":CALLING";
+    public static final String MSG_STATUS_SEND = ERROR_MSG_OK + ":SEND";
+    public static final String MSG_STATUS_RECEIVE = ERROR_MSG_OK + ":RECEIVE";
 
     public static final int MSG_GETTOKEN = 10001;
     public static final int MSG_SET_SURFACE_VIEW_VISIBILITUY = 10002;
@@ -36,6 +40,7 @@ public class ConstantUtils
     public static final int WHAT_CALLBACK_CALL_STATUS = 2;
     public static final int WHAT_CALLBACK_REMOTE_PIC_PATH = 3;
     public static final int WHAT_CALLBACK_SET_APPKEY_ID = 4;
+    public static final int WHAT_CALLBACK_MSG_STATUS = 5;
 
     public static final String TRUE_STR = "true";
     public static final String FALSE_STR = "false";

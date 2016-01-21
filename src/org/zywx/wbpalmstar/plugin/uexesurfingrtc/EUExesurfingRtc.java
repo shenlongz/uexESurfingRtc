@@ -1,6 +1,7 @@
 package org.zywx.wbpalmstar.plugin.uexesurfingrtc;
 
 import jni.util.Utils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.zywx.wbpalmstar.engine.EBrowserView;
@@ -23,6 +24,7 @@ import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 
 /*入口类*/
@@ -37,6 +39,7 @@ public class EUExesurfingRtc extends EUExBase {
     public static final String CALLBACK_CALL_STATUS = "uexESurfingRtc.cbCallStatus";
     public static final String CALLBACK_REMOTE_PIC_PATH = "uexESurfingRtc.cbRemotePicPath";
     public static final String CALLBACK_SET_APPKEY_ID = "uexESurfingRtc.cbSetAppKeyAndAppId";
+    public static final String CALLBACK_MSG_STATUS = "uexESurfingRtc.cbMessageStatus";
 
     final int mMyActivityRequestCode = 10000;
     /**uexESurfingRtc use*/
@@ -52,9 +55,7 @@ public class EUExesurfingRtc extends EUExBase {
     /** The m acc. */
     private Device mAcc = null;  //reg 
     /** The m call. */
-    private Connection mCall;
-    /** The m incoming. */
-    private boolean mIncoming = false;
+    private static Connection mCall = null;
     private String remotePicPathString = "";
     private ViewConfig mLocalViewConfig = null;
     private ViewConfig mRemoteViewConfig = null;
@@ -67,7 +68,8 @@ public class EUExesurfingRtc extends EUExBase {
             mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS,
                     "StateChanged,result=" + result);
             if(result == RtcConst.CallCode_Success) { //注销也存在此处
-
+                mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_LOG_STATUS, 
+                        ConstantUtils.LOG_STATUS_LOGIN);
             }
             else if(result == RtcConst.NoNetwork) {
                 onNoNetWork();
@@ -101,11 +103,13 @@ public class EUExesurfingRtc extends EUExBase {
             Utils.PrintLog(5, LOGTAG, "onNoNetWork");
             Utils.DisplayToast(mContext, "onNoNetWork");
             //断网销毁 
+			setViewVisibilityByHandler(View.INVISIBLE);
             if (mCall!=null) {
                 mCall.disconnect();
                 mCall = null;
+				mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_CALL_STATUS,
+                            ConstantUtils.CALL_STATUS_NORMAL);
             }
-            mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, "pls check network");
         }
         private void ChangeNetWork() {
             Utils.PrintLog(5, LOGTAG, "ChangeNetWork");
@@ -115,17 +119,16 @@ public class EUExesurfingRtc extends EUExBase {
         public void onNewCall(Connection call) {
 
             Utils.PrintLog(5,"DeviceListener","onNewCall,call="+call.info());
-            mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, 
-                    "DeviceListener:onNewCall,call="+call.info());
             if (mCall!=null) {
+            	mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, 
+                        "DeviceListener:rejectIncomingCall call="+call.info());
                 call.reject();
                 call = null;
                 Utils.PrintLog(5,"DeviceListener","onNewCall,reject call");
-                mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, 
-                        "DeviceListener:onNewCall,reject call");
                 return;
             }
-            mIncoming = true;
+            mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, 
+                    "DeviceListener:onNewCall,call="+call.info());
             mCall = call;
             call.setIncomingListener(mCListener);
             mHandler.post(new Runnable() {
@@ -141,13 +144,17 @@ public class EUExesurfingRtc extends EUExBase {
         }
 
         @Override
-        public void onReceiveIm(String arg0, String arg1, String arg2) {
-            
+        public void onReceiveIm(String from,String mime,String content) {
+        	mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_MSG_STATUS, ConstantUtils.MSG_STATUS_RECEIVE);
+        	mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, "onReceiveIm:from:"+from+",msg:"+content);
         }
 
         @Override
-        public void onSendIm(int arg0) {
-            
+        public void onSendIm(int nStatus) {
+        	if(nStatus == RtcConst.CallCode_Success)
+        		mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_MSG_STATUS, ConstantUtils.MSG_STATUS_SEND);
+            else
+            	mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_MSG_STATUS, ConstantUtils.ERROR_MSG_ERROR + nStatus);
         }
     };
     
@@ -200,6 +207,11 @@ public class EUExesurfingRtc extends EUExBase {
         }
     };
 
+    public static void onActivityResume() {
+    	if(mCall != null)
+    		mCall.resetVideoViews();
+    };
+
     /** The UI handler. */
     private Handler mUIHandler = new Handler() {
         @Override 
@@ -233,6 +245,7 @@ public class EUExesurfingRtc extends EUExBase {
     public EUExesurfingRtc(Context context, EBrowserView view)
     {
         super(context, view);
+        Log.e("appcan","先看看咋回事吧！");
     }
     
     /**
@@ -259,7 +272,7 @@ public class EUExesurfingRtc extends EUExBase {
         }
 
         mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_SET_APPKEY_ID, errorMsg);
-    }   
+    }
     
     /**
      * initESurfingRtc.
@@ -401,10 +414,9 @@ public class EUExesurfingRtc extends EUExBase {
                     int mCallType = ConstantUtils.CALL_TYPE_AUDIO_AND_VIDED;
                     mCallType = RtcLogin.getCallType(Integer
                             .parseInt(parm[ConstantUtils.CALL_TYPE_ID_OFFSET]));
-                    mIncoming = false;
                     startCall = true;
                     try {
-                        String remoteUserName = RtcRules.UserToRemoteUri_new(parm[ConstantUtils.CALL_USEER_NAME_OFFSET],
+                        String remoteUserName = RtcRules.UserToRemoteUri_new(parm[ConstantUtils.CALL_USER_NAME_OFFSET],
                                 RtcConst.UEType_Any);
                         
                         JSONObject jinfo = new JSONObject();
@@ -447,14 +459,12 @@ public class EUExesurfingRtc extends EUExBase {
         {
             int mCallType = ConstantUtils.CALL_TYPE_AUDIO_AND_VIDED;
             mCallType = RtcLogin.getCallType(Integer.parseInt(parm[0]));
-            if (mIncoming)
+            if (mCall != null)
             {
-                mIncoming = false;
                 mCall.accept(mCallType); //视频来电可以选择仅音频接听
-                Utils.PrintLog(5,LOGTAG, "onBtnCall mIncoming accept(mCT)");
-                mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, "ConnectionListener:onConnected");
+                Utils.PrintLog(5,LOGTAG, "incoming accept(mCT)");
+                errorMsg = ConstantUtils.CALL_STATUS_CALLING;
             }
-            errorMsg = ConstantUtils.CALL_STATUS_CALLING;
         }
         else
         {
@@ -475,7 +485,6 @@ public class EUExesurfingRtc extends EUExBase {
                     ConstantUtils.CALL_STATUS_NORMAL);
           mCall = null;
         }
-        mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS, "call hangup");
     }
     
     public void setVideoAttr(String[] parm)
@@ -497,7 +506,7 @@ public class EUExesurfingRtc extends EUExBase {
     public void takeRemotePicture(String[] parm)
     {
         LogUtils.logWlDebug(DEBUG, LogUtils.getLineInfo() + "into takeRemotePicture");
-        if(mClt != null)
+        if(mCall != null)
         {
             String picPath = remotePicPathString 
                     + BaseUtils.getSpecialFormatTime(ConstantUtils.TIME_FORMAT_PIC_NAME) 
@@ -523,6 +532,30 @@ public class EUExesurfingRtc extends EUExBase {
         {
             AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
             mClt.enableSpeaker(audioManager, (ConstantUtils.TRUE_STR.equals(parm[0])) ? true : false);
+        }
+    }
+    
+    public void sendMessage(String[] parm)
+    {
+        LogUtils.logWlDebug(DEBUG, LogUtils.getLineInfo() 
+                + "into sendMessage content-type = " + RtcConst.ImText);
+        if(parm.length >= 2)
+        {
+            if (mAcc != null)
+            {
+                String remoteUserName = RtcRules.UserToRemoteUri_new(parm[ConstantUtils.MSG_USER_NAME_OFFSET],
+                                RtcConst.UEType_Any);
+                
+                mAcc.sendIm(remoteUserName, RtcConst.ImText, parm[ConstantUtils.MSG_TYPE_MSG_OFFSET]);
+            }
+            else
+            {
+            	mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_MSG_STATUS, ConstantUtils.ERROR_MSG_UNREGISTER);
+            }
+        }
+        else
+        {
+        	mCbhandler.send2Callback(ConstantUtils.WHAT_CALLBACK_MSG_STATUS, ConstantUtils.ERROR_MSG_PARM_ERROR);
         }
     }
     
@@ -567,25 +600,41 @@ public class EUExesurfingRtc extends EUExBase {
         @Override
         public void handleMessage(Message msg)
         {
+        	String js;
             switch (msg.what)
             {
             case ConstantUtils.WHAT_CALLBACK_GLOBAL_STATUS:
                 String outStr = BaseUtils
                         .getSpecialFormatTime(ConstantUtils.TIME_FORMAT_GLOBAL_STATUS) 
                         + ": " + (String)msg.obj;
-                jsCallback(CALLBACK_GLOBAL_STATUS, 0, EUExCallback.F_C_TEXT, outStr);
+                js = SCRIPT_HEADER + "if(" + CALLBACK_GLOBAL_STATUS + "){"
+                        + CALLBACK_GLOBAL_STATUS + "(" + 0 + "," + EUExCallback.F_C_TEXT + ",'" +outStr + "');}";
+                evaluateScript("root", 0, js);
                 break;
             case ConstantUtils.WHAT_CALLBACK_LOG_STATUS:
-                jsCallback(CALLBACK_LOG_STATUS, 0, EUExCallback.F_C_TEXT, (String)msg.obj);
+            	js = SCRIPT_HEADER + "if(" + CALLBACK_LOG_STATUS + "){"
+                        + CALLBACK_LOG_STATUS + "(" + 0 + "," + EUExCallback.F_C_TEXT + ",'" +(String)msg.obj + "');}";
+                evaluateScript("root", 0, js);
                 break;
             case ConstantUtils.WHAT_CALLBACK_CALL_STATUS:
-                jsCallback(CALLBACK_CALL_STATUS, 0, EUExCallback.F_C_TEXT, (String)msg.obj);
+            	js = SCRIPT_HEADER + "if(" + CALLBACK_CALL_STATUS + "){"
+                        + CALLBACK_CALL_STATUS + "(" + 0 + "," + EUExCallback.F_C_TEXT + ",'" +(String)msg.obj + "');}";
+                evaluateScript("root", 0, js);
                 break;
             case ConstantUtils.WHAT_CALLBACK_REMOTE_PIC_PATH:
-                jsCallback(CALLBACK_REMOTE_PIC_PATH, 0, EUExCallback.F_C_TEXT, (String)msg.obj);
+            	js = SCRIPT_HEADER + "if(" + CALLBACK_REMOTE_PIC_PATH + "){"
+                        + CALLBACK_REMOTE_PIC_PATH + "(" + 0 + "," + EUExCallback.F_C_TEXT + ",'" +(String)msg.obj + "');}";
+                evaluateScript("root", 0, js);
                 break;
             case ConstantUtils.WHAT_CALLBACK_SET_APPKEY_ID:
-                jsCallback(CALLBACK_SET_APPKEY_ID, 0, EUExCallback.F_C_TEXT, (String)msg.obj);
+            	js = SCRIPT_HEADER + "if(" + CALLBACK_SET_APPKEY_ID + "){"
+                        + CALLBACK_SET_APPKEY_ID + "(" + 0 + "," + EUExCallback.F_C_TEXT + ",'" +(String)msg.obj + "');}";
+                evaluateScript("root", 0, js);
+                break;
+            case ConstantUtils.WHAT_CALLBACK_MSG_STATUS:
+            	js = SCRIPT_HEADER + "if(" + CALLBACK_MSG_STATUS + "){"
+                        + CALLBACK_MSG_STATUS + "(" + 0 + "," + EUExCallback.F_C_TEXT + ",'" +(String)msg.obj + "');}";
+                evaluateScript("root", 0, js);
                 break;
             }
         }
